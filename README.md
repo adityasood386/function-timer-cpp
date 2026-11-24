@@ -110,7 +110,6 @@ User code terminated.
 function-timer-cpp/
 ├── function_timer.cpp   # the tool (main program)
 ├── README.md
-└── .gitignore
 ```
 
 `usercode.cpp` and `usercode.exe` are generated every time you run the tool, so they are not stored in the repository.
