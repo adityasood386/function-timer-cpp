@@ -1,13 +1,14 @@
 # Function Timer (C++)
 
-A small Windows command-line tool that measures how long a C++ function takes to run. Paste in your function, tell the tool its name, and it compiles and runs your code in a separate process and reports the execution time in milliseconds. If the code runs longer than 3 seconds (for example, an infinite loop), the tool kills it automatically.
+A Windows command-line tool that measures how long a C++ function takes to run, built around **Win32 process management**. Paste in your function and the tool compiles it, launches it as a separate process with the Windows API (`CreateProcess`), waits on it with a timeout (`WaitForSingleObject`), and force-terminates it (`TerminateProcess`) if it hangs, for example in an infinite loop. The execution time is reported in milliseconds. I am still learning :)
 
 ## Features
 
+- Uses the **Win32 API** to launch user code as a separate child process, so a crash or hang does not take down the tool
+- Enforces a **3-second timeout** with `WaitForSingleObject` and kills runaway processes with `TerminateProcess`
+- Cleans up process and thread handles with `CloseHandle` to avoid resource leaks
 - Paste any C++ function directly into the terminal, with no need to edit a source file
 - Automatically wraps your code with a timing harness built on `std::chrono::high_resolution_clock`
-- Compiles and runs your code as a separate process, so a crash or hang does not take down the tool
-- 3-second timeout that terminates infinite loops and very slow code
 - Reports execution time in milliseconds
 
 ## How It Works
@@ -20,6 +21,22 @@ A small Windows command-line tool that measures how long a C++ function takes to
    - records the end time and prints the elapsed milliseconds
 4. The generated file is compiled with `g++` into `usercode.exe`.
 5. The tool launches `usercode.exe` using the Windows API (`CreateProcess`) and waits up to 3000 ms. If the process is still running after that, it is terminated with `TerminateProcess`.
+
+## Windows Programming Concepts
+
+The process-control part of the tool is written directly against the Windows API (`<windows.h>`):
+
+| API | Role in this project |
+|-----|----------------------|
+| `STARTUPINFO` | Describes how the new process should start; initialised with its own size, as the API requires |
+| `PROCESS_INFORMATION` | Receives the handles and IDs of the new process and its main thread |
+| `CreateProcess` | Launches the compiled `usercode.exe` as an independent child process |
+| `WaitForSingleObject` | Blocks until the process exits or the timeout (3000 ms) expires |
+| `WAIT_TIMEOUT` | Return value used to detect that the process ran too long |
+| `TerminateProcess` | Forcibly stops a process that exceeded the timeout |
+| `CloseHandle` | Releases the process and thread handles on every exit path |
+
+Running the user's code in its own process, instead of calling it inside the tool, is what makes the timeout possible. An infinite loop in the same process would freeze the tool itself, but a separate process can be killed from outside.
 
 ## Requirements
 
